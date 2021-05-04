@@ -107,13 +107,9 @@ def get_dataset(file_train, file_test):
 def fer_model(input_shape):
     X_input = Input(input_shape)
     X = Dense(128, input_shape=input_shape, activation='relu', kernel_initializer='glorot_normal')(X_input)
-    # X = BatchNormalization()(X)
     X = Dense(128, input_shape=input_shape, activation='relu', kernel_initializer='glorot_normal')(X)
-    # X = BatchNormalization()(X)
     X = Dense(128, input_shape=input_shape, activation='relu', kernel_initializer='glorot_normal')(X)
-    # X = BatchNormalization()(X)
     X = Dense(128, input_shape=input_shape, activation='relu', kernel_initializer='glorot_normal')(X)
-    # X = BatchNormalization()(X)
     X = Dense(7, activation='softmax')(X)
     er_model = Model(inputs=X_input, outputs=X, name='fer_model')
     return er_model
