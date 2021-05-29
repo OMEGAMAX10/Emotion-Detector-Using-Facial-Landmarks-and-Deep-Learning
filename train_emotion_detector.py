@@ -6,7 +6,6 @@ import dlib
 import math
 import tensorflow as tf
 from tensorflow.keras.models import Model, Sequential, load_model
-from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.layers import Dense, Dropout, Flatten, Activation, Input, BatchNormalization
 from tensorflow.keras.losses import categorical_crossentropy
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
@@ -107,9 +106,13 @@ def get_dataset(file_train, file_test):
 def fer_model(input_shape):
     X_input = Input(input_shape)
     X = Dense(128, input_shape=input_shape, activation='relu', kernel_initializer='glorot_normal')(X_input)
+    # X = BatchNormalization()(X)
     X = Dense(128, input_shape=input_shape, activation='relu', kernel_initializer='glorot_normal')(X)
+    # X = BatchNormalization()(X)
     X = Dense(128, input_shape=input_shape, activation='relu', kernel_initializer='glorot_normal')(X)
+    # X = BatchNormalization()(X)
     X = Dense(128, input_shape=input_shape, activation='relu', kernel_initializer='glorot_normal')(X)
+    # X = BatchNormalization()(X)
     X = Dense(7, activation='softmax')(X)
     er_model = Model(inputs=X_input, outputs=X, name='fer_model')
     return er_model
@@ -128,8 +131,8 @@ def train_model(fer_train, fer_train_labels, fer_pred, fer_pred_labels, model_fi
 # make_dataset("datasets/fer_train.h5", "datasets/fer_test.h5")
 fer_train, fer_train_labels, fer_pred, fer_pred_labels = get_dataset("datasets/fer_train.h5", "datasets/fer_test.h5")
 
-model = train_model(fer_train, fer_train_labels, fer_pred, fer_pred_labels)
-# model = load_model('best_fer_model.h5')
+# model = train_model(fer_train, fer_train_labels, fer_pred, fer_pred_labels)
+model = load_model('best_fer_model.h5')
 model.summary()
 
 preds = model.evaluate(fer_pred, fer_pred_labels)
