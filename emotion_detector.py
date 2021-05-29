@@ -86,4 +86,4 @@ def emotion_detector(model, cam_id=0):
 
 
 fer_model = load_model('best_fer_model.h5')
-emotion_detector(fer_model, 1)
+emotion_detector(fer_model)
