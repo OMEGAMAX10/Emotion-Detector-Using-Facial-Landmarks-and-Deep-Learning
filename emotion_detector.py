@@ -66,7 +66,7 @@ def emotion_detector(model, cam_id=0):
         # loop over the face detections
         for rect in rects:
             # determine the facial landmarks for the face region, then convert the facial landmark (x, y)-coordinates to a NumPy array
-            shape = predictor(gray, rect)
+            shape = predictor(clahe_image, rect)
             coords = shape_to_np(shape)
             landmark_vect = np.expand_dims(np.array(get_landmarks(shape, rect)), axis=0)
             emotion_idx = np.argmax(model.predict(landmark_vect))
