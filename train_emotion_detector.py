@@ -5,10 +5,10 @@ import numpy as np
 import dlib
 import math
 import tensorflow as tf
-from tensorflow.keras.models import Model, Sequential, load_model
-from tensorflow.keras.layers import Dense, Dropout, Flatten, Activation, Input, BatchNormalization
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.losses import categorical_crossentropy
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.optimizers import Adam
 
 emotions = ["angry", "disgust", "fear", "happy", "neutral", "sad", "surprise"]  # Emotion list
