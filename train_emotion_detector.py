@@ -61,16 +61,14 @@ def make_dataset(file_train, file_test):
         print(" working on " + emotion)
         training, prediction = get_files(emotion)
         for item in training:
-            image = cv2.imread(item)
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = cv2.imread(item, cv2.IMREAD_GRAYSCALE)
             clahe_image = clahe.apply(gray)
             landmark_list = get_landmarks(clahe_image)
             for landmark in landmark_list:
                 training_data.append(landmark)  # append image array to training data list
                 training_labels.append(emotions.index(emotion))
         for item in prediction:
-            image = cv2.imread(item)
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = cv2.imread(item, cv2.IMREAD_GRAYSCALE)
             clahe_image = clahe.apply(gray)
             landmark_list = get_landmarks(clahe_image)
             for landmark in landmark_list:
