@@ -1,28 +1,22 @@
+import os
 import cv2
-import glob
 import h5py
 import dlib
 import math
 import numpy as np
 import tensorflow as tf
+import pandas as pd
+from pathlib import Path
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.losses import categorical_crossentropy
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.optimizers import Adam
 
-emotions = ["angry", "disgust", "fear", "happy", "neutral", "sad", "surprise"]  # Emotion list
+emotions = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]
 clahe = cv2.createCLAHE(clipLimit=1, tileGridSize=(2, 3))
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-
-
-def get_files(emotion):
-    files_train = glob.glob("train/" + emotion + "/*")  # dataset
-    training = files_train
-    files_test = glob.glob("test/" + emotion + "/*")  # dataset
-    prediction = files_test
-    return training, prediction
 
 
 def get_landmarks(image):
@@ -52,41 +46,29 @@ def get_landmarks(image):
     return landmark_list
 
 
-def make_dataset(file_train, file_test):
-    training_data = []
-    training_labels = []
-    prediction_data = []
-    prediction_labels = []
-    for emotion in emotions:
-        print(" working on " + emotion)
-        training, prediction = get_files(emotion)
-        for item in training:
-            gray = cv2.imread(item, cv2.IMREAD_GRAYSCALE)
-            clahe_image = clahe.apply(gray)
-            landmark_list = get_landmarks(clahe_image)
-            for landmark in landmark_list:
-                training_data.append(landmark)  # append image array to training data list
-                training_labels.append(emotions.index(emotion))
-        for item in prediction:
-            gray = cv2.imread(item, cv2.IMREAD_GRAYSCALE)
-            clahe_image = clahe.apply(gray)
-            landmark_list = get_landmarks(clahe_image)
-            for landmark in landmark_list:
-                prediction_data.append(landmark)
-                prediction_labels.append(emotions.index(emotion))
-    npar_train = np.array(training_data)
-    npar_train_labels = np.array(training_labels)
-    npar_pred = np.array(prediction_data)
-    npar_pred_labels = np.array(prediction_labels)
+def make_dataset(train_filename, test_filename, dataset_folder="datasets", fer_dataset="fer2013.csv"):
+    dataset_dir = Path(dataset_folder)
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    data = pd.read_csv(fer_dataset)
+    data_train = data[data.Usage == "Training"]
+    data_test = data[data.Usage.str.contains("Test")]
+    train_images = [get_landmarks(clahe.apply(np.reshape(pixels.split(" "), (48, 48)).astype("uint8"))) for pixels in data_train["pixels"]]
+    test_images = [get_landmarks(clahe.apply(np.reshape(pixels.split(" "), (48, 48)).astype("uint8"))) for pixels in data_test["pixels"]]
+    training_labels = data_train["emotion"].tolist()
+    test_labels = data_test["emotion"].tolist()
+    npar_train = np.array([landmark for landmark_list in train_images for landmark in landmark_list])
+    npar_test = np.array([landmark for landmark_list in test_images for landmark in landmark_list])
+    npar_train_labels = np.array([label for idx, label in enumerate(training_labels) if len(train_images[idx]) > 0])
+    npar_test_labels = np.array([label for idx, label in enumerate(test_labels) if len(test_images[idx]) > 0])
     # Save dataset in .h5 files
-    hf_train = h5py.File(file_train, 'w')
+    hf_train = h5py.File(os.path.join(dataset_dir, train_filename), 'w')
     hf_train.create_dataset('list_classes', data=emotions)
     hf_train.create_dataset('train_set_x', data=npar_train)
     hf_train.create_dataset('train_set_y', data=npar_train_labels)
-    hf_test = h5py.File(file_test, 'w')
+    hf_test = h5py.File(os.path.join(dataset_dir, test_filename), 'w')
     hf_test.create_dataset('list_classes', data=emotions)
-    hf_test.create_dataset('test_set_x', data=npar_pred)
-    hf_test.create_dataset('test_set_y', data=npar_pred_labels)
+    hf_test.create_dataset('test_set_x', data=npar_test)
+    hf_test.create_dataset('test_set_y', data=npar_test_labels)
 
 
 def get_dataset(file_train, file_test):
@@ -95,10 +77,10 @@ def get_dataset(file_train, file_test):
     npar_train_labels = np.array(hf_train.get('train_set_y'))
     npar_train_labels = tf.one_hot(npar_train_labels, len(hf_train.get('list_classes'))).numpy()
     hf_test = h5py.File(file_test, 'r')
-    npar_pred = np.array(hf_test.get('test_set_x'))
-    npar_pred_labels = np.array(hf_test.get('test_set_y'))
-    npar_pred_labels = tf.one_hot(npar_pred_labels, len(hf_test.get('list_classes'))).numpy()
-    return npar_train, npar_train_labels, npar_pred, npar_pred_labels
+    npar_test = np.array(hf_test.get('test_set_x'))
+    npar_test_labels = np.array(hf_test.get('test_set_y'))
+    npar_test_labels = tf.one_hot(npar_test_labels, len(hf_test.get('list_classes'))).numpy()
+    return npar_train, npar_train_labels, npar_test, npar_test_labels
 
 
 def fer_model(input_shape):
@@ -112,21 +94,21 @@ def fer_model(input_shape):
     return er_model
 
 
-def train_model(fer_train, fer_train_labels, fer_pred, fer_pred_labels, model_file='best_fer_model.h5', batch_size=64,
-                epochs=1000):
+def train_model(fer_train, fer_train_labels, fer_test, fer_test_labels, model_file='best_fer_model.h5', batch_size=64,
+                epochs=300):
     model = fer_model(fer_train.shape[1:])
     model.compile(loss=categorical_crossentropy, optimizer=Adam(learning_rate=0.0001), metrics=['accuracy'])
     checkpoint = ModelCheckpoint(model_file, verbose=1, monitor='val_accuracy', save_best_only=True, mode='auto')
     model.fit(x=fer_train, y=fer_train_labels, batch_size=batch_size, epochs=epochs, verbose=1, callbacks=[checkpoint],
-              validation_data=(fer_pred, fer_pred_labels), shuffle=True)
+              validation_data=(fer_test, fer_test_labels), shuffle=True)
     return model
 
 
-# make_dataset("datasets/fer_train.h5", "datasets/fer_test.h5")
-fer_train, fer_train_labels, fer_pred, fer_pred_labels = get_dataset("datasets/fer_train.h5", "datasets/fer_test.h5")
-# model = train_model(fer_train, fer_train_labels, fer_pred, fer_pred_labels)
-model = load_model('best_fer_model.h5')
+# make_dataset("fer_train.h5", "fer_test.h5")
+fer_train, fer_train_labels, fer_test, fer_test_labels = get_dataset("datasets/fer_train.h5", "datasets/fer_test.h5")
+# model = train_model(fer_train, fer_train_labels, fer_test, fer_test_labels)
+model = load_model("best_fer_model.h5")
 model.summary()
 
-preds = model.evaluate(fer_pred, fer_pred_labels)
+preds = model.evaluate(fer_test, fer_test_labels)
 print(f'Model Accuracy for Test Dataset: {preds[1] * 100} %\nModel Loss for Test Dataset: {preds[0]}')

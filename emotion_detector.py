@@ -4,7 +4,7 @@ import math
 import numpy as np
 from tensorflow.keras.models import load_model
 
-emotions = ["angry", "disgust", "fear", "happy", "neutral", "sad", "surprise"]  # Emotion list
+emotions = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]
 clahe = cv2.createCLAHE(clipLimit=1, tileGridSize=(2, 3))
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
@@ -60,13 +60,12 @@ def emotion_detector(model, cam_id=0):
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     while True:
         _, frame = cam.read()
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        clahe_image = clahe.apply(gray)
-        rects = detector(clahe_image, 1)
+        image = clahe.apply(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+        rects = detector(image, 1)
         # loop over the face detections
         for rect in rects:
             # determine the facial landmarks for the face region, then convert the facial landmark (x, y)-coordinates to a NumPy array
-            shape = predictor(clahe_image, rect)
+            shape = predictor(image, rect)
             coords = shape_to_np(shape)
             landmark_vect = np.expand_dims(np.array(get_landmarks(shape, rect)), axis=0)
             emotion_idx = np.argmax(model.predict(landmark_vect))
@@ -74,7 +73,7 @@ def emotion_detector(model, cam_id=0):
             (x, y, w, h) = rect_to_bb(rect)
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             # show the emotion
-            cv2.putText(frame, emotions[emotion_idx].capitalize(), (x - 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(frame, emotions[emotion_idx], (x - 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             # loop over the (x, y)-coordinates for the facial landmarks and draw them on the image
             for (x, y) in coords:
                 cv2.circle(frame, (x, y), 1, (0, 0, 255), -1)
