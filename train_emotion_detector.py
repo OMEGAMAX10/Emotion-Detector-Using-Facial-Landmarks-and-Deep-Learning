@@ -94,8 +94,7 @@ def fer_model(input_shape):
     return er_model
 
 
-def train_model(fer_train, fer_train_labels, fer_test, fer_test_labels, model_file='best_fer_model.h5', batch_size=64,
-                epochs=300):
+def train_model(fer_train, fer_train_labels, fer_test, fer_test_labels, model_file='best_fer_model.h5', batch_size=64, epochs=300):
     model = fer_model(fer_train.shape[1:])
     model.compile(loss=categorical_crossentropy, optimizer=Adam(learning_rate=0.0001), metrics=['accuracy'])
     checkpoint = ModelCheckpoint(model_file, verbose=1, monitor='val_accuracy', save_best_only=True, mode='auto')
